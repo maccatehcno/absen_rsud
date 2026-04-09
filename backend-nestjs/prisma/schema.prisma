@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  PERMISSION
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id          String   @id @default(uuid())
+  nip         String   @unique
+  nik         String   @unique
+  email       String   @unique
+  name        String
+  jabatan     String
+  role        Role     @default(STAFF)
+  password    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  attendances Attendance[]
+  leaves      LeaveRequest[]
+  shifts      UserShift[]
+}
+
+model Attendance {
+  id              String           @id @default(uuid())
+  userId          String
+  checkIn         DateTime?
+  checkOut        DateTime?
+  checkInLatitude Float?
+  checkInLongitude Float?
+  checkOutLatitude Float?
+  checkOutLongitude Float?
+  photoPath       String?
+  status          AttendanceStatus @default(PRESENT)
+  note            String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Shift {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g., Pagi, Siang, Malam
+  startTime   String   // HH:mm
+  endTime     String   // HH:mm
+  gracePeriod Int      @default(0) // minutes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users UserShift[]
+}
+
+model UserShift {
+  id        String   @id @default(uuid())
+  userId    String
+  shiftId   String
+  dayOfWeek Int      // 0-6 (Sunday-Saturday)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id])
+  shift Shift @relation(fields: [shiftId], references: [id])
+
+  @@unique([userId, dayOfWeek])
+}
+
+model LeaveRequest {
+  id        String      @id @default(uuid())
+  userId    String
+  startDate DateTime
+  endDate   DateTime
+  reason    String      @db.Text
+  status    LeaveStatus @default(PENDING)
+  attachment String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
