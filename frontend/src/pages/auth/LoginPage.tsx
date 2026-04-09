@@ -4,6 +4,7 @@ import { User, Lock, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { authService } from '../../api/auth';
+import { setAuthSession } from '../../lib/auth';
 
 export const LoginPage: React.FC = () => {
   const [nip, setNip] = useState('');
@@ -18,9 +19,8 @@ export const LoginPage: React.FC = () => {
     try {
       const response = await authService.login({ nip, password });
       const { user, access_token } = response.data.data;
-      
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('user', JSON.stringify(user));
+
+      setAuthSession(access_token, user);
       
       toast.success('Login berhasil!', {
         description: `Selamat datang, ${user.name}`,

@@ -9,13 +9,11 @@ import { AdminAttendance } from './pages/admin/AdminAttendance';
 import { Attendance } from './pages/Attendance';
 import { AttendanceHistory } from './pages/AttendanceHistory';
 import { LoginPage } from './pages/auth/LoginPage';
-import { getDefaultAuthenticatedRoute, isAdmin, isAuthenticated } from './lib/auth';
+import { useAuth } from './lib/auth';
 import './App.css';
 
 function App() {
-  const authenticated = isAuthenticated();
-  const admin = isAdmin();
-  const defaultRoute = getDefaultAuthenticatedRoute();
+  const { authenticated, admin, defaultRoute } = useAuth();
 
   return (
     <BrowserRouter>

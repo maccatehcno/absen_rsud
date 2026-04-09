@@ -64,6 +64,9 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+// Static Leaflet path options for the geofencing circle
+const CIRCLE_OPTIONS = { color: '#4f46e5', fillColor: '#4f46e5', fillOpacity: 0.08, weight: 2 };
+
 export const Attendance: React.FC = () => {
   const [stream, setStream]           = useState<MediaStream | null>(null);
   const [photo, setPhoto]             = useState<File | null>(null);
@@ -144,6 +147,14 @@ export const Attendance: React.FC = () => {
   const distance = location ? getDistance(location.lat, location.lng, RSUD_LAT, RSUD_LNG) : null;
   const inRange  = distance !== null && distance <= RADIUS_M;
 
+  // Memoize position objects to avoid infinite loops in React 18 / react-leaflet
+  const mapCenter = React.useMemo(() => 
+    location ? [location.lat, location.lng] as L.LatLngExpression : [RSUD_LAT, RSUD_LNG] as L.LatLngExpression, 
+    [location?.lat, location?.lng]
+  );
+  
+  const rsudPos = React.useMemo(() => [RSUD_LAT, RSUD_LNG] as L.LatLngExpression, []);
+
   return (
     <div className="min-h-[calc(100vh-64px)] bg-slate-50 pb-12">
       <div className="mx-auto max-w-md px-4 pt-6 space-y-5">
@@ -211,7 +222,7 @@ export const Attendance: React.FC = () => {
           <div className="h-56 w-full relative">
             {location ? (
               <MapContainer
-                center={[location.lat, location.lng]}
+                center={mapCenter}
                 zoom={17}
                 className="h-full w-full"
                 zoomControl={true}
@@ -221,20 +232,20 @@ export const Attendance: React.FC = () => {
                 <RecenterMap lat={location.lat} lng={location.lng} />
 
                 {/* User location marker */}
-                <Marker position={[location.lat, location.lng]} icon={userIcon}>
+                <Marker position={mapCenter} icon={userIcon}>
                   <Popup><strong>Posisi Anda</strong><br />{location.lat.toFixed(6)}, {location.lng.toFixed(6)}</Popup>
                 </Marker>
 
                 {/* RSUD marker */}
-                <Marker position={[RSUD_LAT, RSUD_LNG]} icon={rsudIcon}>
+                <Marker position={rsudPos} icon={rsudIcon}>
                   <Popup><strong>RSUD Lamaddukelleng Wajo</strong></Popup>
                 </Marker>
 
                 {/* Geofencing radius circle */}
                 <Circle
-                  center={[RSUD_LAT, RSUD_LNG]}
+                  center={rsudPos}
                   radius={RADIUS_M}
-                  pathOptions={{ color: '#4f46e5', fillColor: '#4f46e5', fillOpacity: 0.08, weight: 2 }}
+                  pathOptions={CIRCLE_OPTIONS}
                 />
               </MapContainer>
             ) : (

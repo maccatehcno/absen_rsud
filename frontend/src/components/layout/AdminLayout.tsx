@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, LogOut, ShieldCheck, Menu, X, ClipboardList, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { clearAuth, getStoredUser } from '../../lib/auth';
+import { clearAuth, useAuth } from '../../lib/auth';
 
 const SidebarLink = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => {
   const location = useLocation();
@@ -27,11 +27,12 @@ const SidebarLink = ({ to, icon: Icon, label }: { to: string; icon: any; label: 
 export const AdminLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const navigate = useNavigate();
-  const userData = getStoredUser();
+  const { user: userData } = useAuth();
 
   const handleLogout = () => {
     clearAuth();
-    navigate('/login');
+    setIsSidebarOpen(false);
+    navigate('/login', { replace: true });
   };
 
   return (

@@ -1,27 +1,21 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { clearAuth, getDefaultAuthenticatedRoute, isAuthenticated as hasAuthSession } from '../../lib/auth';
+import { clearAuth, useAuth } from '../../lib/auth';
 
 export const PublicLayout: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isAttendanceRoute = location.pathname === '/attendance';
-
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsAuthenticated(hasAuthSession());
-  }, [location.pathname]);
+  const { authenticated, defaultRoute } = useAuth();
 
   const handleLogout = () => {
     clearAuth();
-    setIsAuthenticated(false);
-    window.location.href = '/login';
+    setIsMenuOpen(false);
+    navigate('/login', { replace: true });
   };
-
-  const dashboardPath = getDefaultAuthenticatedRoute();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
@@ -39,10 +33,10 @@ export const PublicLayout: React.FC = () => {
           <div className="hidden items-center gap-8 md:flex">
             <Link to="/" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Beranda</Link>
             <Link to="/attendance" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Absensi</Link>
-            {isAuthenticated && (
+            {authenticated && (
               <Link to="/history" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Riwayat</Link>
             )}
-            {!isAuthenticated ? (
+            {!authenticated ? (
               <Link 
                 to="/login" 
                 className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-indigo-700 active:scale-95 shadow-md shadow-indigo-600/20"
@@ -52,7 +46,7 @@ export const PublicLayout: React.FC = () => {
             ) : (
               <>
                 <Link
-                  to={dashboardPath}
+                  to={defaultRoute}
                   className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-indigo-700 active:scale-95 shadow-md shadow-indigo-600/20"
                 >
                   Dashboard
@@ -88,12 +82,12 @@ export const PublicLayout: React.FC = () => {
               <div className="flex flex-col gap-2 p-4 shadow-xl">
                 <Link to="/" onClick={() => setIsMenuOpen(false)} className="rounded-xl px-4 py-3 text-base font-bold text-slate-700 hover:bg-slate-50 transition-colors">Beranda</Link>
                 <Link to="/attendance" onClick={() => setIsMenuOpen(false)} className="rounded-xl px-4 py-3 text-base font-bold text-slate-700 hover:bg-slate-50 transition-colors">Absensi Online</Link>
-                {!isAuthenticated ? (
+                {!authenticated ? (
                   <Link to="/login" onClick={() => setIsMenuOpen(false)} className="mt-2 w-full rounded-xl bg-indigo-600 py-4 text-center font-bold text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all">Masuk Aplikasi</Link>
                 ) : (
                   <>
-                    <Link to={dashboardPath} onClick={() => setIsMenuOpen(false)} className="mt-2 w-full rounded-xl bg-indigo-600 py-4 text-center font-bold text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all">Buka Dashboard</Link>
-                    <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="w-full rounded-xl bg-slate-100 py-4 text-center font-bold text-slate-700 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all">Keluar Akun</button>
+                    <Link to={defaultRoute} onClick={() => setIsMenuOpen(false)} className="mt-2 w-full rounded-xl bg-indigo-600 py-4 text-center font-bold text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all">Buka Dashboard</Link>
+                    <button onClick={handleLogout} className="w-full rounded-xl bg-slate-100 py-4 text-center font-bold text-slate-700 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all">Keluar Akun</button>
                   </>
                 )}
               </div>
