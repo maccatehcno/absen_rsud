@@ -32,9 +32,11 @@ export const PublicLayout: React.FC = () => {
           {/* Desktop Nav */}
           <div className="hidden items-center gap-8 md:flex">
             <Link to="/" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Beranda</Link>
-            <Link to="/attendance" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Absensi</Link>
             {authenticated && (
-              <Link to="/history" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Riwayat</Link>
+              <>
+                <Link to="/attendance" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Absensi</Link>
+                <Link to="/history" className="text-sm font-bold text-slate-600 transition-colors hover:text-indigo-600">Riwayat</Link>
+              </>
             )}
             {!authenticated ? (
               <Link 
@@ -81,7 +83,12 @@ export const PublicLayout: React.FC = () => {
             >
               <div className="flex flex-col gap-2 p-4 shadow-xl">
                 <Link to="/" onClick={() => setIsMenuOpen(false)} className="rounded-xl px-4 py-3 text-base font-bold text-slate-700 hover:bg-slate-50 transition-colors">Beranda</Link>
-                <Link to="/attendance" onClick={() => setIsMenuOpen(false)} className="rounded-xl px-4 py-3 text-base font-bold text-slate-700 hover:bg-slate-50 transition-colors">Absensi Online</Link>
+                {authenticated && (
+                  <>
+                    <Link to="/attendance" onClick={() => setIsMenuOpen(false)} className="rounded-xl px-4 py-3 text-base font-bold text-slate-700 hover:bg-slate-50 transition-colors">Absensi Online</Link>
+                    <Link to="/history" onClick={() => setIsMenuOpen(false)} className="rounded-xl px-4 py-3 text-base font-bold text-slate-700 hover:bg-slate-50 transition-colors">Riwayat Absensi</Link>
+                  </>
+                )}
                 {!authenticated ? (
                   <Link to="/login" onClick={() => setIsMenuOpen(false)} className="mt-2 w-full rounded-xl bg-indigo-600 py-4 text-center font-bold text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all">Masuk Aplikasi</Link>
                 ) : (
