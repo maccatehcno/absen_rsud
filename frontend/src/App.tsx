@@ -26,8 +26,14 @@ function App() {
             path="/login"
             element={authenticated ? <Navigate to={defaultRoute} replace /> : <LoginPage />}
           />
-          <Route path="/attendance" element={<Attendance />} />
-          <Route path="/history" element={<AttendanceHistory />} />
+          <Route 
+            path="/attendance" 
+            element={authenticated ? <Attendance /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/history" 
+            element={authenticated ? <AttendanceHistory /> : <Navigate to="/login" replace />} 
+          />
         </Route>
 
         {/* Admin Routes */}

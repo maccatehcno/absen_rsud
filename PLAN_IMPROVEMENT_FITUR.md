@@ -1,354 +1,85 @@
 # Plan Improvement Fitur RSUD Wajo
-
-Tanggal analisa: 2026-04-09
-
-## Tujuan
-
-Dokumen ini fokus pada improvement fitur dari sisi produk, operasional admin, dan kebutuhan staf. Ini bukan plan refactor teknis. Fokusnya adalah:
-
-- fitur apa yang sudah cukup baik
-- fitur apa yang masih kosong atau belum matang
-- fitur mana yang paling layak dikerjakan berikutnya
-
-## Snapshot Fitur Saat Ini
-
-Berdasarkan halaman frontend, endpoint backend, dan skema database saat ini:
-
-### Sudah tersedia
-
-- Login admin/staf dengan `nip` dan password
-- Absensi masuk dengan selfie + lokasi
-- Absensi keluar dengan lokasi
-- Riwayat absensi staf
-- Dashboard admin ringkas
-- Manajemen user admin
-- Rekap absensi admin
-- Preview foto absensi di admin
-
-### Sudah ada di database tapi belum dimanfaatkan penuh
-
-- `Shift`
-- `UserShift`
-- `LeaveRequest`
-- `Attendance.note`
-- status absensi selain `PRESENT`
-
-### Belum terlihat ada
-
-- notifikasi
-- approval flow izin/cuti
-- manajemen shift
-- koreksi absensi
-- export laporan
-- audit trail tindakan admin
-- pengaturan aplikasi
-
-## Gap Fitur Utama
-
-### 1. Shift management belum ada, padahal model data sudah siap
-
-Referensi model:
-
-- `backend-nestjs/prisma/schema.prisma`
-
-Kenapa penting:
-
-- tanpa shift, status seperti `LATE` belum punya dasar aturan yang jelas
-- rumah sakit biasanya punya pola kerja per hari dan per unit
-- dashboard kehadiran akan lebih bernilai jika berbasis jadwal kerja aktual
-
-Fitur yang disarankan:
-
-- halaman `/admin/shifts`
-- CRUD shift
-- assign shift ke staf per hari
-- tampilan shift aktif per staf
-- grace period per shift
-- kalkulasi otomatis `PRESENT` vs `LATE`
-
-Prioritas: tinggi
-
-### 2. Pengajuan izin/cuti belum ada, padahal sudah ada tabel `LeaveRequest`
-
-Kenapa penting:
-
-- absensi tanpa fitur izin/cuti akan membuat data “tidak hadir” tidak punya konteks
-- admin butuh membedakan absent vs approved leave
-
-Fitur yang disarankan:
-
-- halaman staf untuk ajukan cuti/izin
-- upload lampiran
-- halaman admin untuk approve/reject
-- riwayat pengajuan untuk staf
-- integrasi dengan status absensi harian
-
-Prioritas: tinggi
-
-### 3. Koreksi absensi manual belum ada
-
-Kondisi saat ini:
-
-- sistem sudah mendukung check-in/check-out normal
-- belum ada alur jika staf lupa checkout, kamera gagal, atau GPS bermasalah
-
-Kenapa penting:
-
-- kasus nyata operasional hampir pasti muncul
-- tanpa fitur koreksi, admin akan sulit menjaga data tetap valid
-
-Fitur yang disarankan:
-
-- request koreksi absensi oleh staf
-- approval koreksi oleh admin
-- alasan koreksi wajib diisi
-- audit siapa yang mengubah jam masuk/keluar
-
-Prioritas: tinggi
-
-### 4. Rekap admin sudah ada, tetapi belum cukup operasional
-
-Kondisi saat ini:
-
-- admin sudah bisa lihat rekap absensi dan preview foto
-
-Yang masih kurang:
-
-- filter per user/unit/jabatan
-- filter rentang tanggal, bukan hanya satu tanggal
-- pencarian cepat
-- export CSV/Excel/PDF
-- detail lokasi check-in/check-out di peta atau link koordinat
-- pembeda jelas antara hadir, terlambat, izin, absent
-
-Kenapa penting:
-
-- admin rumah sakit biasanya butuh laporan periodik
-- rekap baru berguna penuh kalau bisa difilter dan diexport
-
-Prioritas: tinggi
-
-### 5. Dashboard admin masih bisa dibuat jauh lebih bernilai
-
-Kondisi saat ini:
-
-- dashboard sudah menampilkan statistik dasar
-
-Improvement yang layak:
-
-- grafik tren kehadiran 7 hari dan 30 hari
-- ringkasan keterlambatan
-- staf belum checkout
-- staf yang belum absen sampai jam tertentu
-- komposisi hadir per jabatan/unit
-- widget pengajuan izin pending
-
-Kenapa penting:
-
-- dashboard seharusnya membantu keputusan cepat, bukan hanya angka statis
-
-Prioritas: menengah-tinggi
-
-### 6. Profil dan self-service staf masih minim
-
-Kondisi saat ini:
-
-- staf fokus ke absensi dan riwayat
-
-Fitur yang disarankan:
-
-- halaman profil saya
-- ganti password
-- lihat data jabatan/unit
-- lihat shift mingguan
-- lihat status izin/cuti
-
-Kenapa penting:
-
-- mengurangi ketergantungan ke admin untuk kebutuhan dasar
-
-Prioritas: menengah
-
-### 7. Belum ada layer notifikasi
-
-Use case yang jelas:
-
-- izin/cuti disetujui atau ditolak
-- absensi berhasil/gagal
-- pengingat belum check-out
-- pengingat hari ini belum absen
-
-Bentuk awal yang realistis:
-
-- notifikasi in-app
-- toast dan badge dashboard
-- email/WhatsApp bisa menyusul belakangan
-
-Prioritas: menengah
-
-### 8. Belum ada grouping organisasi seperti unit/divisi/poli
-
-Kondisi saat ini:
-
-- user punya `jabatan`, tapi belum terlihat ada struktur unit kerja
-
-Kenapa penting:
-
-- rumah sakit biasanya butuh pelaporan per poli, ruangan, instalasi, atau unit
-- admin akan kesulitan melihat performa per unit hanya dari jabatan
-
-Fitur yang disarankan:
-
-- tambah entitas unit/divisi
-- assign user ke unit
-- filter dashboard dan laporan per unit
-
-Prioritas: menengah
-
-### 9. Attendance photo dan lokasi belum dimanfaatkan sebagai evidence lengkap
-
-Kondisi saat ini:
-
-- foto sudah tersimpan
-- lokasi sudah tersimpan
-- admin sudah bisa preview foto
-
-Improvement lanjutan:
-
-- tampilkan koordinat check-in/check-out lebih jelas
-- link “lihat di peta”
-- tampilkan metadata foto dan waktu upload
-- beri flag jika foto atau lokasi tidak lengkap
-
-Prioritas: menengah
-
-### 10. Belum ada audit trail admin
-
-Use case:
-
-- siapa membuat user
-- siapa mengubah role
-- siapa menghapus user
-- siapa mengubah atau menyetujui koreksi absensi
-- siapa approve/reject cuti
-
-Kenapa penting:
-
-- sistem kepegawaian butuh jejak tindakan untuk akuntabilitas
-
-Prioritas: menengah
-
-## Fitur yang Paling Layak Dikerjakan Berikutnya
-
-Jika tujuannya meningkatkan nilai produk paling cepat, urutan terbaik menurut kondisi repo saat ini:
-
-1. Manajemen shift
-2. Pengajuan izin/cuti
-3. Koreksi absensi manual
-4. Rekap admin versi operasional lengkap
-5. Dashboard admin yang lebih analitis
-
-Alasannya:
-
-- lima fitur ini langsung membuat sistem lebih realistis dipakai harian
-- model database sebagian sudah mendukung
-- dampaknya terasa untuk admin dan staf sekaligus
-
-## Roadmap yang Disarankan
-
-### Fase 1 — Lengkapi alur absensi inti
-
-- manajemen shift
-- assignment shift ke staf
-- status `LATE` otomatis
-- detail rekap admin lebih lengkap
-
-Outcome:
-
-- sistem absensi tidak lagi hanya catat hadir, tapi mulai sesuai aturan kerja
-
-### Fase 2 — Tambahkan exception workflow
-
-- pengajuan izin/cuti
-- koreksi absensi
-- approval admin
-- status dan riwayat approval
-
-Outcome:
-
-- sistem siap menangani kasus nyata di lapangan
-
-### Fase 3 — Perkuat monitoring admin
-
-- dashboard tren dan anomaly
-- export laporan
-- filter per unit/jabatan/user
-- ringkasan pending action
-
-Outcome:
-
-- admin bisa memakai sistem untuk monitoring, bukan hanya input data
-
-### Fase 4 — Self-service dan engagement
-
-- profil staf
-- ganti password
-- shift mingguan
-- notifikasi
-
-Outcome:
-
-- pengalaman staf lebih lengkap dan mandiri
-
-## Backlog Fitur Tambahan
-
-Beberapa ide tambahan yang belum wajib, tetapi bagus untuk jangka menengah:
-
-- mode kiosk untuk absensi perangkat bersama
-- deteksi duplicate selfie atau quality check foto
-- geofence multipoint jika ada beberapa gedung/lokasi RSUD
-- leaderboard kedisiplinan atau laporan kinerja bulanan
-- integrasi fingerprint atau face recognition di masa depan
-- dashboard khusus kepala unit
-
-## Prioritas Akhir
-
-### Prioritas tinggi
-
-- manajemen shift
-- pengajuan izin/cuti
-- koreksi absensi manual
-- rekap admin lengkap + export
-
-### Prioritas menengah
-
-- dashboard analitik admin
-- profil staf dan self-service
-- notifikasi
-- struktur unit/divisi
-- audit trail
-
-### Prioritas rendah
-
-- mode kiosk
-- advanced face verification
-- laporan performa lanjutan
-
-## Rekomendasi Praktis
-
-Kalau hanya memilih satu fitur berikutnya, pilih:
-
-- manajemen shift
-
-Kalau memilih dua fitur berikutnya, pilih:
-
-- manajemen shift
-- pengajuan izin/cuti
-
-Kalau ingin dampak paling terasa untuk admin, pilih:
-
-- rekap admin lengkap + export
-
-Kalau ingin dampak paling terasa untuk staf, pilih:
-
-- self-service izin/cuti + koreksi absensi
+Terakhir diperbarui: 2026-04-09 (Analisis paska implementasi Datatable & Maps)
+
+## 🎯 Tujuan
+Dokumen ini merangkum strategi pengembangan fitur untuk menjadikan sistem absensi RSUD Wajo siap pakai secara operasional (Production Ready). Fokus pada transisi dari "prototype" ke "sistem manajemen sdm yang reliabel".
+
+---
+
+## 🚦 Status Fitur Saat Ini (Snapshot 2026-04-09)
+
+### ✅ Sudah Matang (Selesai Implementasi)
+- **User Interface**: Tema Modern Light Mode di semua platform (Admin & Staf).
+- **Security Check**: Absensi multi-evidence (Selfie Kamera + GPS Geolocation).
+- **Core Ops (Admin)**: 
+  - Manajemen Staf (CRUD) dengan validasi role & jabatan.
+  - **Server-Side Datatable**: Pencarian & paginasi diproses di database (performa tinggi untuk ribuan staf).
+  - **Dashboard Real-time**: Statistik kehadiran harian & rekap bulanan.
+- **Visualisasi**: Map interaktif (Leaflet/OSM) pada saat staf melakukan absensi (deteksi jangkauan geofence).
+
+### 🛠️ Fitur "Setengah Matang" (Backend Siap, Frontend Belum)
+- **Shift & Penugasan**: Tabel `Shift` dan `UserShift` sudah ada di database namun belum ada UI untuk pengelolaannya.
+- **Leave/Permit**: Tabel `LeaveRequest` sudah ada namun alur pengajuan dan approval belum dibuat.
+- **Evidence Monitoring**: Lokasi & Foto sudah tersimpan lengkap, tapi Admin belum memiliki "Detail View" yang nyaman untuk audit per baris absensi.
+
+---
+
+## 📈 Rekomendasi Improvement (The GAP)
+
+### 1. Konfigurasi Global Admin (Crucial)
+**Masalah**: Koordinat RSUD & Radius Geofence saat ini masih *hardcoded* di file kode (`Attendance.tsx`).
+**Solusi**:
+- Buat halaman `/admin/settings`.
+- Form untuk update lokasi RSUD (pilih kordinat via map picker) dan set radius jangkauan (dalam meter).
+- Global toggles (contoh: aktifkan/matikan fitur foto).
+
+### 2. Manajemen Shift (Prioritas Tinggi)
+**Masalah**: Tanpa shift, admin tidak tahu staf mana yang terlambat (`LATE`) atau absen (`ABSENT`).
+**Solusi**:
+- UI CRUD Shift (Nama Shift, Jam Masuk, Jam Pulang, Grace Period).
+- UI Plotting Shift (Menu bulanan untuk tentukan shift pegawai per hari).
+- Integrasi logic: Saat staf absen, sistem otomatis bandingkan dengan jam masuk di jadwalnya.
+
+### 3. Workflow Pengajuan Izin/Cuti
+**Masalah**: Saat ini jika staf tidak absen, datanya hanya muncul sebagai "Tidak Hadir".
+**Solusi**:
+- Form pengajuan di sisi Staf (Pilih jenis izin: Sakit, Cuti, DL, dll).
+- Upload lampiran (Surat Dokter/Surat Tugas).
+- Notifikasi ke Admin untuk approval.
+- Status izin otomatis memvalidasi status kehadiran staf di rekap.
+
+### 4. Evidence Audit View (Admin)
+**Masalah**: Tabel rekap admin saat ini baru menampilkan teks. Admin butuh verifikasi bukti lebih cepat.
+**Solusi**:
+- Klik baris absensi → Munculkan Modal Detail.
+- Tampilkan foto selfie staf yang besar.
+- Tampilkan peta dengan dua marker: Lokasi Staf vs Lokasi RSUD saat itu.
+- Metadata: Jenis perangkat (Android/iOS/Web) yang dipakai.
+
+### 5. Export & Pelaporan Formal
+**Masalah**: Admin butuh data fisik untuk laporan bulanan ke pimpinan.
+**Solusi**:
+- Tombol **Export Excel** pada tabel rekap admin.
+- Cetak PDF Slip Kehadiran per pegawai.
+- Filter rekap per unit kerja/poli (Struktur unit kerja perlu ditambahkan sebagai entitas).
+
+---
+
+## 🗓️ Roadmap Prioritas Berikutnya
+
+### Step 1: Penentuan Aturan (Policy) 🧱
+**Target**: Manajemen Shift & Global Settings.
+Agar absensi punya acuan waktu masuk-pulang dan kordinat geofence yang dinamis.
+
+### Step 2: Kasus Khusus (Exception) 🚑
+**Target**: Alur Izin/Cuti & Koreksi Manual.
+Menangani kondisi nyata dimana staf tidak bisa absen karena alasan sah atau kendala teknis.
+
+### Step 3: Output & Audit (Reporting) 📄
+**Target**: Detailed View + Maps Recap + Export Excel.
+Mempermudah admin melakukan verifikasi bukti paska-absensi dan pembuatan laporan.
+
+---
+
+## 💡 Analisa Penutup
+Implementasi **Server-side Pagination** dan **Leaflet Maps** yang baru saja dilakukan sudah menutup celah performa dan visualisasi dasar. Langkah paling logis berikutnya adalah **Manajemen Shift**. Tanpa shift, sistem ini hanyalah "perekam waktu", bukan "manajemen kehadiran". Integrasi shift akan mengubah data mentah menjadi metrik kedisiplinan yang berharga bagi RSUD Wajo.
