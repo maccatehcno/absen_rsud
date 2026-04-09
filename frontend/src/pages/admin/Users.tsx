@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Mail, Contact, Briefcase, Pencil, Trash2, X, Check, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UserPlus, Mail, Contact, Briefcase, Pencil, Trash2, X, Check, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { adminService } from '../../api/admin';
 import { toast } from 'sonner';
 import type { User } from '../../types/api';
@@ -11,9 +11,7 @@ const JABATAN_OPTIONS = [
   'Staf Administrasi', 'IT / Sistem Informasi', 'Direksi / Manajemen', 'Lainnya',
 ];
 
-const emptyForm = {
-  nip: '', nik: '', name: '', email: '', jabatan: '', password: '', role: 'STAFF' as string,
-};
+const emptyForm = { nip: '', nik: '', name: '', email: '', jabatan: '', password: '', role: 'STAFF' };
 
 const ROLE_BADGE: Record<string, string> = {
   ADMIN: 'bg-purple-50 text-purple-700 border border-purple-200',
@@ -22,70 +20,46 @@ const ROLE_BADGE: Record<string, string> = {
 
 const PAGE_SIZE = 10;
 
-type SortKey = keyof Pick<User, 'name' | 'nip' | 'jabatan' | 'email' | 'role'>;
+interface Meta { total: number; page: number; limit: number; totalPages: number; }
 
 export const Users: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [users, setUsers]           = useState<User[]>([]);
+  const [meta, setMeta]             = useState<Meta>({ total: 0, page: 1, limit: PAGE_SIZE, totalPages: 1 });
+  const [loading, setLoading]       = useState(true);
+  const [search, setSearch]         = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage]             = useState(1);
+  const [showModal, setShowModal]   = useState(false);
   const [editTarget, setEditTarget] = useState<User | null>(null);
-  const [formData, setFormData] = useState({ ...emptyForm });
+  const [formData, setFormData]     = useState({ ...emptyForm });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [page, setPage] = useState(1);
 
-  useEffect(() => { fetchUsers(); }, []);
+  // Debounce search → reset to page 1 when search changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminService.getAllUsers();
-      setUsers(res.data as any);
+      const res = await adminService.getAllUsers({ page, limit: PAGE_SIZE, search: debouncedSearch });
+      const body = res.data as any;
+      setUsers(body.data);
+      setMeta(body.meta);
     } catch {
       toast.error('Gagal mengambil data pengguna');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, debouncedSearch]);
 
-  // --- Search + Sort + Paginate ---
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return users.filter(u =>
-      u.name.toLowerCase().includes(q) ||
-      u.nip.toLowerCase().includes(q) ||
-      u.jabatan.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q)
-    );
-  }, [users, search]);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const av = (a[sortKey] ?? '').toString().toLowerCase();
-      const bv = (b[sortKey] ?? '').toString().toLowerCase();
-      return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-  }, [filtered, sortKey, sortDir]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('asc'); }
-    setPage(1);
-  };
-
-  const SortIcon = ({ col }: { col: SortKey }) => {
-    if (sortKey !== col) return <ChevronsUpDown size={14} className="text-slate-300" />;
-    return sortDir === 'asc'
-      ? <ChevronUp size={14} className="text-indigo-500" />
-      : <ChevronDown size={14} className="text-indigo-500" />;
-  };
-
-  // --- Modal ---
+  // --- Modal helpers ---
   const openCreate = () => {
     setEditTarget(null); setFormData({ ...emptyForm }); setShowModal(true);
   };
@@ -108,25 +82,30 @@ export const Users: React.FC = () => {
         toast.success('Pengguna berhasil ditambahkan.');
       }
       setShowModal(false); fetchUsers();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menyimpan data.');
-    }
+    } catch (err: any) { toast.error(err.message || 'Gagal menyimpan data.'); }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await adminService.deleteUser(id);
       toast.success('Pengguna dihapus.');
-      setDeleteConfirm(null); fetchUsers();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menghapus.');
-    }
+      setDeleteConfirm(null);
+      if (users.length === 1 && page > 1) setPage(p => p - 1);
+      else fetchUsers();
+    } catch (err: any) { toast.error(err.message || 'Gagal menghapus.'); }
   };
 
   const inputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all';
 
-  const thCls = (col: SortKey) =>
-    `px-4 py-3.5 text-left cursor-pointer select-none group hover:bg-slate-100 transition-colors ${sortKey === col ? 'text-indigo-600' : 'text-slate-500'}`;
+  // Pagination page numbers
+  const pageNums = Array.from({ length: meta.totalPages }, (_, i) => i + 1)
+    .reduce<(number | '...')[]>((acc, p) => {
+      if (p === 1 || p === meta.totalPages || Math.abs(p - page) <= 1) {
+        if (acc.length && (p as number) - (acc[acc.length - 1] as number) > 1) acc.push('...');
+        acc.push(p);
+      }
+      return acc;
+    }, []);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
@@ -134,24 +113,25 @@ export const Users: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
         <div>
           <h2 className="text-2xl font-extrabold italic tracking-tight text-slate-900">Data Pegawai.</h2>
-          <p className="text-sm font-medium text-slate-500">{users.length} pengguna terdaftar</p>
+          <p className="text-sm font-medium text-slate-500">{meta.total} pengguna terdaftar</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all self-start sm:self-auto"
-        >
+        <button onClick={openCreate} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all self-start sm:self-auto">
           <UserPlus size={17} /> Tambah Staf
         </button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search */}
       <div className="relative">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        {loading ? (
+          <Loader2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-400 animate-spin" />
+        ) : (
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        )}
         <input
           type="text"
           placeholder="Cari nama, NIP, jabatan, atau email..."
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          onChange={e => setSearch(e.target.value)}
           className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm font-medium text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
         />
       </div>
@@ -162,35 +142,25 @@ export const Users: React.FC = () => {
           <table className="min-w-full">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
-                <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400 w-10">#</th>
-                {([
-                  ['name',    'Nama'],
-                  ['nip',     'NIP'],
-                  ['jabatan', 'Jabatan'],
-                  ['email',   'Email'],
-                  ['role',    'Role'],
-                ] as [SortKey, string][]).map(([col, label]) => (
-                  <th key={col} className={thCls(col)} onClick={() => handleSort(col)}>
-                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
-                      {label} <SortIcon col={col} />
-                    </div>
+                {['#', 'Nama', 'NIP', 'Jabatan', 'Email', 'Role', 'Aksi'].map((h, i) => (
+                  <th key={h} className={`px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-400 ${i === 6 ? 'text-right' : 'text-left'}`}>
+                    {h}
                   </th>
                 ))}
-                <th className="px-4 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-slate-400">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
+                Array.from({ length: PAGE_SIZE }).map((_, i) => (
                   <tr key={i}>
                     {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-4 py-4">
-                        <div className={`h-4 animate-pulse rounded-lg bg-slate-100 ${j === 0 ? 'w-6' : j === 3 ? 'w-40' : 'w-24'}`} />
+                        <div className={`h-4 animate-pulse rounded-lg bg-slate-100 ${j === 0 ? 'w-5' : j === 3 ? 'w-36' : 'w-24'}`} />
                       </td>
                     ))}
                   </tr>
                 ))
-              ) : paginated.length === 0 ? (
+              ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center">
                     <Search size={32} className="mx-auto text-slate-200 mb-3" />
@@ -198,7 +168,7 @@ export const Users: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                paginated.map((user, i) => (
+                users.map((user, i) => (
                   <motion.tr
                     key={user.id}
                     initial={{ opacity: 0 }}
@@ -268,42 +238,38 @@ export const Users: React.FC = () => {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3">
-          <p className="text-xs font-medium text-slate-400">
-            Menampilkan <span className="font-bold text-slate-600">{Math.min((page - 1) * PAGE_SIZE + 1, sorted.length)}–{Math.min(page * PAGE_SIZE, sorted.length)}</span> dari <span className="font-bold text-slate-600">{sorted.length}</span> data
+        {/* Pagination Footer */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-3">
+          <p className="text-xs font-medium text-slate-400 order-2 sm:order-1">
+            Menampilkan{' '}
+            <span className="font-bold text-slate-600">{meta.total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, meta.total)}</span>
+            {' '}dari{' '}
+            <span className="font-bold text-slate-600">{meta.total}</span> data
           </p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 order-1 sm:order-2">
             <button
-              disabled={page === 1}
+              disabled={page === 1 || loading}
               onClick={() => setPage(p => p - 1)}
               className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent hover:border-slate-200"
             >
               <ChevronLeft size={16} />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-              .reduce<(number | '...')[]>((acc, p, idx, arr) => {
-                if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, i) =>
-                p === '...' ? (
-                  <span key={`e-${i}`} className="px-1 text-slate-300 text-xs">…</span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p as number)}
-                    className={`h-8 w-8 rounded-lg text-sm font-bold transition-all ${page === p ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20' : 'text-slate-500 hover:bg-white hover:border-slate-200 border border-transparent'}`}
-                  >
-                    {p}
-                  </button>
-                )
+            {pageNums.map((p, i) =>
+              p === '...' ? (
+                <span key={`e${i}`} className="px-1 text-slate-300 text-xs">…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  disabled={loading}
+                  className={`h-8 w-8 rounded-lg text-sm font-bold transition-all ${page === p ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20' : 'text-slate-500 hover:bg-white hover:border-slate-200 border border-transparent'}`}
+                >
+                  {p}
+                </button>
               )
-            }
+            )}
             <button
-              disabled={page === totalPages}
+              disabled={page === meta.totalPages || loading}
               onClick={() => setPage(p => p + 1)}
               className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-transparent hover:border-slate-200"
             >
@@ -313,7 +279,7 @@ export const Users: React.FC = () => {
         </div>
       </div>
 
-      {/* Create / Edit Modal */}
+      {/* Modal */}
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
@@ -330,12 +296,10 @@ export const Users: React.FC = () => {
                       {editTarget ? 'Edit Pengguna.' : 'Tambah Pengguna.'}
                     </h3>
                     <p className="text-xs text-slate-400 font-medium mt-0.5">
-                      {editTarget ? `Mengedit data: ${editTarget.name}` : 'Isi data lengkap staf baru'}
+                      {editTarget ? `Mengedit: ${editTarget.name}` : 'Isi data lengkap staf baru'}
                     </p>
                   </div>
-                  <button type="button" onClick={() => setShowModal(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100">
-                    <X size={18} />
-                  </button>
+                  <button type="button" onClick={() => setShowModal(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X size={18} /></button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -345,7 +309,7 @@ export const Users: React.FC = () => {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">NIK</label>
-                    <input required className={inputCls} placeholder="Nomor KTP (16 digit)" value={formData.nik} onChange={e => setFormData({ ...formData, nik: e.target.value })} />
+                    <input required className={inputCls} placeholder="Nomor KTP" value={formData.nik} onChange={e => setFormData({ ...formData, nik: e.target.value })} />
                   </div>
                 </div>
 
@@ -384,9 +348,7 @@ export const Users: React.FC = () => {
                 </div>
 
                 <div className="flex gap-2.5 pt-1">
-                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
-                    Batal
-                  </button>
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Batal</button>
                   <button type="submit" className="flex-[2] rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-[0.98]">
                     {editTarget ? 'Simpan Perubahan' : 'Tambah Pengguna'}
                   </button>

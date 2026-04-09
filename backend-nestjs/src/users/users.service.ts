@@ -35,10 +35,10 @@ export class UsersService {
     const where: any = search
       ? {
           OR: [
-            { name:    { contains: search, mode: 'insensitive' } },
-            { nip:     { contains: search, mode: 'insensitive' } },
+            { name: { contains: search, mode: 'insensitive' } },
+            { nip: { contains: search, mode: 'insensitive' } },
             { jabatan: { contains: search, mode: 'insensitive' } },
-            { email:   { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
           ],
         }
       : {};
@@ -46,7 +46,16 @@ export class UsersService {
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
-        select: { id: true, nip: true, nik: true, name: true, email: true, jabatan: true, role: true, createdAt: true },
+        select: {
+          id: true,
+          nip: true,
+          nik: true,
+          name: true,
+          email: true,
+          jabatan: true,
+          role: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,

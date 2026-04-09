@@ -1,13 +1,13 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  UseGuards, 
-  UseInterceptors, 
-  UploadedFile, 
-  Request, 
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Request,
   Get,
-  BadRequestException
+  BadRequestException,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -33,7 +33,8 @@ export class AttendanceController {
           cb(null, uploadPath);
         },
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `checkin-${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -45,7 +46,9 @@ export class AttendanceController {
     @Body() body: { latitude: string; longitude: string },
   ) {
     if (!file) {
-      throw new BadRequestException('Foto selfie diperlukan untuk absensi masuk.');
+      throw new BadRequestException(
+        'Foto selfie diperlukan untuk absensi masuk.',
+      );
     }
 
     return this.attendanceService.checkIn(req.user.userId, {
